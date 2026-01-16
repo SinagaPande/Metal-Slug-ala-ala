@@ -7,52 +7,60 @@ public class Enemy : MonoBehaviour
     public float moveSpeed = 3f;
     public int damageToPlayer = 10;
     
+    [Header("Cleanup")]
+    // Jarak maksimal musuh dari player/kamera sebelum dihapus otomatis
+    public float despawnDistance = 25f; 
+    
     private Transform playerTarget;
     private Rigidbody2D rb;
+    private EnemySpawner spawner;
 
     void Start()
     {
         rb = GetComponent<Rigidbody2D>();
-        
-        // --- FIX TUMBANG ---
         rb.constraints = RigidbodyConstraints2D.FreezeRotation; 
         
-        // Cari player sekali saja di awal
         GameObject playerObj = GameObject.FindGameObjectWithTag("Player");
         if (playerObj != null) playerTarget = playerObj.transform;
+
+        spawner = FindObjectOfType<EnemySpawner>();
     }
 
     void FixedUpdate()
     {
-        // Jika player sudah mati/hilang, diam saja
+        // 1. Cek Target
         if (playerTarget == null) 
         {
             rb.velocity = Vector2.zero;
             return;
         }
 
-        // 1. Tentukan Arah ke Player
-        Vector2 direction = (playerTarget.position - transform.position).normalized;
+        // 2. Logika Despawn (Pembersihan)
+        // Kita gunakan jarak ke KAMERA (lebih akurat untuk infinite run) daripada ke Player
+        float distanceToCam = Vector2.Distance(transform.position, Camera.main.transform.position);
         
-        // 2. Gerak hanya di sumbu X (Biar musuh tidak terbang miring ke atas)
+        if (distanceToCam > despawnDistance)
+        {
+            Destroy(gameObject);
+            return;
+        }
+
+        // 3. Logika Pergerakan (Mengejar Player)
+        Vector2 direction = (playerTarget.position - transform.position).normalized;
         rb.velocity = new Vector2(direction.x * moveSpeed, rb.velocity.y);
 
-        // 3. Flip Wajah Musuh
+        // 4. Flip Wajah Musuh
         if (direction.x > 0)
             transform.localScale = new Vector3(Mathf.Abs(transform.localScale.x), transform.localScale.y, 1);
         else if (direction.x < 0)
             transform.localScale = new Vector3(-Mathf.Abs(transform.localScale.x), transform.localScale.y, 1);
     }
 
-    // Jika bersentuhan dengan Player -> Player kena damage
-// Jika bersentuhan dengan Player -> Player kena damage
     void OnCollisionEnter2D(Collision2D collision)
     {
         if (collision.gameObject.CompareTag("Player"))
         {
-            // PERUBAHAN DI SINI: Ganti PlayerController menjadi PlayerHealth
             PlayerHealth player = collision.gameObject.GetComponent<PlayerHealth>();
-            
             if (player != null)
             {
                 player.TakeDamage(damageToPlayer);
@@ -65,10 +73,8 @@ public class Enemy : MonoBehaviour
         health -= damage;
         if (health <= 0)
         {
-            // Beritahu Spawner kalau musuh mati (jika ada script Spawner)
-            EnemySpawner spawner = FindObjectOfType<EnemySpawner>();
+            // Memanggil EnemyDied yang sekarang SUDAH ADA di EnemySpawner
             if (spawner != null) spawner.EnemyDied();
-            
             Destroy(gameObject);
         }
     }

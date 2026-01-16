@@ -1,5 +1,4 @@
 using UnityEngine;
-using UnityEngine.UI;
 
 public class PlayerInputHandler : MonoBehaviour
 {
@@ -10,20 +9,23 @@ public class PlayerInputHandler : MonoBehaviour
     [Header("References")]
     public Transform groundCheck;
     public LayerMask groundLayer;
+    public float groundCheckRadius = 0.3f;
+
+    [Header("Mobile Controls (Assign di Inspector)")]
+    public MobileButton btnLeft;
+    public MobileButton btnRight;
+    public MobileButton btnJump;
+    public MobileButton btnShoot;
 
     private Rigidbody2D rb;
     private ShootingController shooter;
     private bool isGrounded;
-    
-    // Menyimpan arah hadap terakhir (1 = Kanan, -1 = Kiri)
     private float facingDirection = 1f;
 
     void Start()
     {
         rb = GetComponent<Rigidbody2D>();
         shooter = GetComponent<ShootingController>();
-        
-        // Setup Fisika Player (Metal Slug Style)
         rb.constraints = RigidbodyConstraints2D.FreezeRotation;
         rb.gravityScale = 3f;
     }
@@ -37,23 +39,44 @@ public class PlayerInputHandler : MonoBehaviour
     void HandleMovement()
     {
         // 1. Cek Tanah
-        isGrounded = Physics2D.OverlapCircle(groundCheck.position, 0.2f, groundLayer);
+        if (groundCheck != null)
+        {
+            isGrounded = Physics2D.OverlapCircle(groundCheck.position, groundCheckRadius, groundLayer);
+        }
 
-        // 2. Input
-        float xInput = Input.GetAxisRaw("Horizontal");
+        // 2. Input Jalan (Keyboard + Mobile)
+        float xInput = Input.GetAxisRaw("Horizontal"); // Default Keyboard
 
-        // 3. Gerak
+        // Override jika tombol mobile ditekan
+        if (btnLeft != null && btnLeft.isPressed) xInput = -1f;
+        if (btnRight != null && btnRight.isPressed) xInput = 1f;
+
+        // 3. Eksekusi Gerak
         rb.velocity = new Vector2(xInput * moveSpeed, rb.velocity.y);
 
-        // 4. Flip & Catat Arah
+        // 4. Flip Karakter
         if (xInput != 0)
         {
             facingDirection = Mathf.Sign(xInput);
             transform.localScale = new Vector3(facingDirection * Mathf.Abs(transform.localScale.x), transform.localScale.y, transform.localScale.z);
         }
 
-        // 5. Lompat
-        if (Input.GetKeyDown(KeyCode.W) && isGrounded)
+        // 5. Lompat (Keyboard Space/W + Mobile Jump)
+        bool jumpInput = Input.GetKeyDown(KeyCode.Space) || Input.GetKeyDown(KeyCode.W);
+        
+        // Cek mobile jump (Kita pakai trik: jika isPressed dan sebelumnya di tanah, lompat sekali)
+        // Namun untuk simplifikasi, kita cek isPressed biasa tapi dikunci logic ground
+        if (btnJump != null && btnJump.isPressed)
+        {
+             // Agar tidak lompat terus menerus saat ditahan, logic ini bisa dikembangkan. 
+             // Tapi untuk Metal Slug style biasanya tap.
+             // Di sini kita anggap 'isPressed' sebagai trigger sesaat (akan loncat terus kalau ditahan, mirip kelinci).
+             // Jika ingin sekali tekan, logic harus diubah sedikit. Untuk sekarang biarkan hold = lompat berulang (bunny hop).
+             jumpInput = true;
+        }
+
+        // Agar tombol mobile jump responsif (sekali tap langsung naik), kita pakai Velocity Override
+        if (jumpInput && isGrounded)
         {
             rb.velocity = new Vector2(rb.velocity.x, jumpForce);
         }
@@ -61,14 +84,25 @@ public class PlayerInputHandler : MonoBehaviour
 
     void HandleShooting()
     {
-        // Deteksi Input Tembak (Klik Kiri)
-        if (Input.GetButton("Fire1")) // Gunakan GetButton agar bisa auto-fire jika fireRate senjata cepat
+        bool shootInput = Input.GetButton("Fire1");
+
+        if (btnShoot != null && btnShoot.isPressed)
         {
-            if (shooter != null)
-            {
-                // Kirim intent menembak + arah hadap saat ini
-                shooter.TryShoot(facingDirection);
-            }
+            shootInput = true;
+        }
+
+        if (shootInput && shooter != null)
+        {
+            shooter.TryShoot(facingDirection);
+        }
+    }
+
+    void OnDrawGizmos()
+    {
+        if (groundCheck != null)
+        {
+            Gizmos.color = isGrounded ? Color.green : Color.red;
+            Gizmos.DrawWireSphere(groundCheck.position, groundCheckRadius);
         }
     }
 }

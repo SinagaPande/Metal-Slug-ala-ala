@@ -1,13 +1,9 @@
 using UnityEngine;
-using UnityEngine.UI; // Jika pakai UI Slider
 
 public class PlayerHealth : MonoBehaviour
 {
     public int maxHealth = 100;
     private int currentHealth;
-
-    // Opsional: UI Slider reference
-    // public Slider healthSlider; 
 
     void Start()
     {
@@ -16,8 +12,11 @@ public class PlayerHealth : MonoBehaviour
 
     public void TakeDamage(int damage)
     {
+        // Jangan kurangi darah jika sudah Game Over
+        if (GameManager.Instance != null && GameManager.Instance.isGameOver) return;
+
         currentHealth -= damage;
-        Debug.Log($"Player hit! HP: {currentHealth}");
+        // Debug.Log($"Player HP: {currentHealth}"); // Optional
 
         if (currentHealth <= 0)
         {
@@ -27,10 +26,14 @@ public class PlayerHealth : MonoBehaviour
 
     void Die()
     {
-        Debug.Log("Player Died!");
-        // Panggil GameManager jika ada
-        if (GameManager.Instance != null) GameManager.Instance.PlayerDied();
+        // Panggil GameManager
+        if (GameManager.Instance != null) 
+        {
+            GameManager.Instance.PlayerDied();
+        }
         
-        Destroy(gameObject);
+        // Hilangkan player dari layar (tapi jangan Destroy object agar script tidak error, cukup matikan render)
+        // Atau Destroy dan biarkan kamera diam. Kita pilih Destroy untuk simple.
+        Destroy(gameObject); 
     }
 }

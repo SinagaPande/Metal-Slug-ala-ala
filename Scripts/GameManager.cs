@@ -1,53 +1,65 @@
 using UnityEngine;
-using UnityEngine.SceneManagement;
+using UnityEngine.UI; // Wajib untuk UI
+using UnityEngine.SceneManagement; // Wajib untuk Restart
 
 public class GameManager : MonoBehaviour
 {
     public static GameManager Instance;
     
-    public int playerLives = 3;
+    [Header("Game Settings")]
     public int score = 0;
-    
+    public bool isGameOver = false;
+
+    [Header("UI References")]
+    public Text scoreText;
+    public GameObject gameOverPanel; // Panel merah yang kita buat tadi
+
     void Awake()
     {
-        // Singleton pattern
+        // Singleton pattern sederhana
         if (Instance == null)
         {
             Instance = this;
-            DontDestroyOnLoad(gameObject);
         }
         else
         {
             Destroy(gameObject);
         }
     }
-    
+
     public void AddScore(int points)
     {
+        if (isGameOver) return;
+
         score += points;
-        Debug.Log($"Score: {score}");
+        
+        // Update UI
+        if (scoreText != null)
+        {
+            scoreText.text = "Score: " + score;
+        }
     }
     
     public void PlayerDied()
     {
-        playerLives--;
-        Debug.Log($"Lives remaining: {playerLives}");
+        if (isGameOver) return;
         
-        if (playerLives <= 0)
-        {
-            GameOver();
-        }
-        else
-        {
-            // Respawn player
-            // SceneManager.LoadScene(SceneManager.GetActiveScene().buildIndex);
-        }
-    }
-    
-    void GameOver()
-    {
+        isGameOver = true;
         Debug.Log("GAME OVER!");
-        // Tampilkan UI game over
-        // SceneManager.LoadScene("GameOverScene");
+        
+        // Munculkan Panel Game Over
+        if (gameOverPanel != null)
+        {
+            gameOverPanel.SetActive(true);
+        }
+
+        // Restart game otomatis setelah 2 detik
+        Invoke("RestartGame", 2f);
+    }
+
+    void RestartGame()
+    {
+        // Reload scene saat ini
+        SceneManager.LoadScene(SceneManager.GetActiveScene().buildIndex);
     }
 }

@@ -3,44 +3,53 @@ using UnityEngine;
 public class EnemySpawner : MonoBehaviour
 {
     public GameObject enemyPrefab;
-    public float spawnInterval = 3f;
-    public Transform[] spawnPoints;
-    public int maxEnemies = 5;
+    public float spawnInterval = 2.5f;
     
-    private int currentEnemyCount = 0;
+    [Header("Spawn Settings")]
+    public float spawnDistanceX = 15f; 
+    public float spawnY = -2.5f;       
     
+    private float nextSpawnTime;
+    private Transform camTransform;
+
     void Start()
     {
-        // Mulai spawn enemy setelah 2 detik, ulang setiap spawnInterval detik
-        InvokeRepeating("SpawnEnemy", 2f, spawnInterval);
+        if (Camera.main != null)
+            camTransform = Camera.main.transform;
     }
-    
-    void SpawnEnemy()
+
+    void Update()
     {
-        // Cek jika sudah mencapai maksimal enemy
-        if (currentEnemyCount >= maxEnemies) return;
-        
-        if (spawnPoints.Length == 0) 
+        // Jangan spawn jika game over
+        if (GameManager.Instance != null && GameManager.Instance.isGameOver) return;
+
+        if (Time.time >= nextSpawnTime)
         {
-            Debug.LogWarning("No spawn points assigned!");
-            return;
+            SpawnDynamic();
+            nextSpawnTime = Time.time + spawnInterval;
         }
-        
-        // Pilih spawn point random
-        Transform randomPoint = spawnPoints[Random.Range(0, spawnPoints.Length)];
-        
-        // Spawn enemy
-        Instantiate(enemyPrefab, randomPoint.position, Quaternion.identity);
-        
-        currentEnemyCount++;
-        
-        Debug.Log($"Enemy spawned! Total: {currentEnemyCount}/{maxEnemies}");
     }
-    
-    // Method ini bisa dipanggil dari Enemy.cs saat enemy mati
+
+    void SpawnDynamic()
+    {
+        if (camTransform == null) return;
+
+        float direction = (Random.value > 0.5f) ? 1f : -1f;
+        Vector3 spawnPos = new Vector3(
+            camTransform.position.x + (direction * spawnDistanceX), 
+            spawnY, 
+            0
+        );
+
+        Instantiate(enemyPrefab, spawnPos, Quaternion.identity);
+    }
+
     public void EnemyDied()
     {
-        currentEnemyCount--;
-        if (currentEnemyCount < 0) currentEnemyCount = 0;
+        // Tambah skor 10 poin
+        if (GameManager.Instance != null)
+        {
+            GameManager.Instance.AddScore(10);
+        }
     }
 }
